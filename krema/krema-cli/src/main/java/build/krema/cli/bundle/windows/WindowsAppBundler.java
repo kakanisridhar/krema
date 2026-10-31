@@ -32,11 +32,11 @@ public class WindowsAppBundler implements AppBundler {
             throw new IOException("jpackage not found. Requires JDK 16+ with jpackage available.");
         }
 
-        Path outputDir = config.outputDir().resolve("bundle").resolve("windows");
+        Path outputDir = config.outputDir();
         Files.createDirectories(outputDir);
 
         // Use outputDir as input directory (where the jar and libs are)
-        Path inputDir = config.outputDir();
+        Path inputDir = Paths.get("target");
 
         List<String> command = new ArrayList<>();
         command.add(jpackagePath);
@@ -45,7 +45,7 @@ public class WindowsAppBundler implements AppBundler {
         command.add("--input");
         command.add(inputDir.toAbsolutePath().toString());
         command.add("--main-jar");
-        command.add(config.appName() + ".jar");
+        command.add(config.appName() + "-" + config.version() + ".jar");
         command.add("--main-class");
         command.add(config.mainClass());
         command.add("--name");
