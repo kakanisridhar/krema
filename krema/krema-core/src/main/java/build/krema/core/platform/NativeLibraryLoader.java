@@ -50,6 +50,9 @@ public final class NativeLibraryLoader {
         if (javaLibPath != null) {
             System.out.println("[NativeLibraryLoader] Found in java.library.path: " + javaLibPath);
             System.out.flush();
+            if (platform == Platform.WINDOWS) {
+                preloadSiblingCompanions(javaLibPath);
+            }
             return loadFromPath(javaLibPath);
         }
 
@@ -105,6 +108,34 @@ public final class NativeLibraryLoader {
             }
         }
         return null;
+    }
+
+    /**
+     * MinGW runtime DLLs that webview.dll may depend on. Windows' LoadLibrary does not
+     * search the loading DLL's own directory for its dependencies, so these must be
+     * pre-loaded when they sit next to the main library (e.g. in a jpackage app dir).
+     */
+    private static final List<String> WINDOWS_COMPANION_DLLS = List.of(
+        "libwinpthread-1.dll",
+        "libgcc_s_seh-1.dll",
+        "libstdc++-6.dll"
+    );
+
+    private static void preloadSiblingCompanions(Path libraryPath) {
+        Path dir = libraryPath.toAbsolutePath().getParent();
+        if (dir == null) return;
+        for (String companion : WINDOWS_COMPANION_DLLS) {
+            Path path = dir.resolve(companion);
+            if (!Files.isRegularFile(path)) continue;
+            try {
+                System.out.println("[NativeLibraryLoader] Pre-loading companion: " + path);
+                System.out.flush();
+                SymbolLookup.libraryLookup(path, Arena.global());
+            } catch (IllegalArgumentException e) {
+                System.out.println("[NativeLibraryLoader] Warning: failed to pre-load companion: " + path + " (" + e.getMessage() + ")");
+                System.out.flush();
+            }
+        }
     }
 
     private static Path extractFromJar(String libraryName, Platform platform) {

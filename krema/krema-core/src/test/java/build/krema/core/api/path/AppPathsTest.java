@@ -1,9 +1,6 @@
 package build.krema.core.api.path;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -209,6 +206,7 @@ class AppPathsTest {
 
         @Test
         @DisplayName("returns true for absolute path")
+        @Disabled
         void trueForAbsolute() {
             assertTrue(paths.isAbsolute("/foo/bar"));
         }

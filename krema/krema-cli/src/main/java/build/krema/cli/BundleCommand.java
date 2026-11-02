@@ -273,12 +273,50 @@ public class BundleCommand implements Callable<Integer> {
         String version = config.getPackageConfig().getVersion();
         String mainClass = config.getBuild().getMainClass();
 
+        // Native libraries (webview.dll + companions) to ship with the app
+        Path libPath = NativeLibraryFinder.find();
+        if (libPath == null) {
+            System.out.println("[Krema Bundle] Warning: native library directory not found; "
+                + "the app will fall back to the DLLs embedded in krema-core");
+        }
+
+        // Runtime dependency jars to ship with the app
+        String classpath = null;
+        if (Files.exists(Path.of("pom.xml"))) {
+            System.out.println("[Krema Bundle] Resolving runtime dependencies...");
+            try {
+                classpath = MavenResolver.resolveClasspath(JdkResolver.resolve());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while resolving dependencies", e);
+            }
+            if (classpath == null) {
+                System.err.println("[Krema Bundle] Error: failed to resolve Maven dependencies");
+                return 1;
+            }
+        }
+
+        // jpackage on Windows only accepts .ico icons
+        Path iconPath = null;
+        String iconPathStr = config.getBundle().getIcon();
+        if (iconPathStr != null) {
+            if (iconPathStr.toLowerCase().endsWith(".ico")) {
+                iconPath = Path.of(iconPathStr);
+            } else {
+                System.out.println("[Krema Bundle] Warning: ignoring icon " + iconPathStr
+                    + " (Windows requires an .ico file)");
+            }
+        }
+
         AppBundleConfig bundleConfig = AppBundleConfig.builder()
             .appName(appName)
             .identifier(identifier)
             .version(version)
             .mainClass(mainClass != null ? mainClass : "com.example.app.Main")
             .outputDir(Path.of("target/bundle/windows"))
+            .classpath(classpath)
+            .libPath(libPath)
+            .iconPath(iconPath)
             .deepLinkSchemes(config.getDeepLink().getSchemes())
             .build();
 

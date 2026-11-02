@@ -3,9 +3,11 @@ package build.krema.cli;
 import build.krema.core.platform.PlatformDetector;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
- * Checks that Maven is available on the system.
+ * Checks that Maven is available on the system and resolves project classpaths.
  */
 public final class MavenResolver {
 
@@ -34,5 +36,36 @@ public final class MavenResolver {
         System.err.println("[Krema]   macOS:    brew install maven");
         System.err.println("[Krema]   Linux:    sudo apt install maven  (or your package manager)");
         return false;
+    }
+
+    /**
+     * Resolves the project's runtime dependency classpath via
+     * {@code mvn dependency:build-classpath}.
+     *
+     * @param javaHome JDK to run Maven with, or null to use Maven's default
+     * @return the classpath string (entries separated by the platform path separator),
+     *         or null if resolution failed
+     */
+    public static String resolveClasspath(Path javaHome) throws IOException, InterruptedException {
+        Path cpFile = Files.createTempFile("krema-cp", ".txt");
+        try {
+            ProcessBuilder pb = new ProcessBuilder(ShellCommand.of(
+                "mvn", "dependency:build-classpath",
+                "-Dmdep.outputFile=" + cpFile.toAbsolutePath(),
+                "-Dmdep.includeScope=runtime",
+                "-q"
+            ));
+            if (javaHome != null) {
+                pb.environment().put("JAVA_HOME", javaHome.toString());
+            }
+            pb.inheritIO();
+            Process process = pb.start();
+            if (process.waitFor() != 0) {
+                return null;
+            }
+            return Files.readString(cpFile).trim();
+        } finally {
+            Files.deleteIfExists(cpFile);
+        }
     }
 }

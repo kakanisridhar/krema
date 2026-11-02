@@ -457,26 +457,7 @@ public class BuildCommand implements Callable<Integer> {
     }
 
     private String resolveMavenClasspath() throws IOException, InterruptedException {
-        Path cpFile = Files.createTempFile("krema-cp", ".txt");
-        try {
-            ProcessBuilder pb = new ProcessBuilder(ShellCommand.of(
-                "mvn", "dependency:build-classpath",
-                "-Dmdep.outputFile=" + cpFile.toAbsolutePath(),
-                "-q"
-            ));
-            pb.environment().put("JAVA_HOME", javaHome.toString());
-            pb.inheritIO();
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-
-            if (exitCode != 0) {
-                return null;
-            }
-
-            return Files.readString(cpFile).trim();
-        } finally {
-            Files.deleteIfExists(cpFile);
-        }
+        return MavenResolver.resolveClasspath(javaHome);
     }
 
     void setConfigPath(String path) {
